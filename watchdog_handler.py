@@ -1,25 +1,33 @@
 import time
+from typing import Union
 from watchdog.observers import Observer
-from watchdog.events import *  # PatternMatchingEventHandler
+from watchdog.events import *
 import json
-from os.path import abspath
+from os.path import abspath, join
+
 
 class WatchdogHandler:
     def __init__(self, config: dict):
         self.config = config
         self.file_log = {}
+        self.log_path = "test.log"  #os.path.expanduser("~/.config/liveBackup.log")
 
     def log_file(self, event):
-        # TODO: this will bloat up quickly delete somehow something somewhere
+        log = "test.log"
+        # don't log changes to own log or recursive loop will trigger
+        if abspath(event.src_path) == abspath(self.log_path):
+            return
+
+        # TODO: this will bloat up quickly, delete somehow something somewhere
         try:
             self.file_log[abspath(event.src_path)].append(event.event_type)
         except KeyError:
             self.file_log[abspath(event.src_path)] = [event.event_type]
 
-        with open("test.log", "w") as fp:
+        with open(log, "w") as fp:
             json.dump(self.file_log, fp, indent=2)
 
-    def on_created(self, event: FileCreatedEvent):
+    def on_created(self, event: Union[FileCreatedEvent, DirCreatedEvent]):
         self.log_file(event)
 
         print(f"hey, {event.src_path} has been created! {event.event_type}")
